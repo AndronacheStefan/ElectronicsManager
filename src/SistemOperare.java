@@ -1,1 +1,5 @@
-public enum SistemOperare { WINDOWS, LINUX }
+public enum SistemOperare {
+    WINDOWS,
+    LINUX,
+    MACOS
+}
