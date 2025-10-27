@@ -31,8 +31,7 @@ public class MainAPP
         try (Connection conn = DBConnection.connec()) {
             assert conn != null;
             try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(sql)) {
-
+                 ResultSet rs = stmt.executeQuery(sql)) {\
                 while (rs.next()) {
                     String tip = rs.getString("tip");
                     String denumire = rs.getString("denumire");
