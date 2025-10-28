@@ -1,4 +1,4 @@
-public  enum ModTiparire {
+public enum ModTiparire {
     COLOR,
     ALBNEGRU
 }
