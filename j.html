@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Echipamente Manager - Web UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; margin: 16px; background: #f6f8fb; }
+        .toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+        button { background:#1976d2; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+        button.secondary { background:#6c757d; }
+        button:disabled { opacity:0.6; cursor:not-allowed; }
+        #status { margin-left:8px; color:#333; }
+        #list { display:flex; flex-direction:column; gap:8px; }
+        .card { background:white; padding:12px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.08); border:1px solid #e6eaf0; }
+        .row { display:flex; gap:12px; flex-wrap:wrap; }
+        .muted { color:#666; font-size:0.9em; }
+        .key { font-weight:600; margin-right:6px; }
+        .error { color:crimson; }
+    </style>
+</head>
+<body>
+<h2>Echipamente Manager — Web UI</h2>
+<div class="toolbar">
+    <button id="btnAll">All</button>
+    <button id="btnPrinters">Printers</button>
+    <button id="btnCopiers">Copiers</button>
+    <button id="btnSystems">Systems</button>
+    <button id="btnReload" class="secondary">Reload from DB</button>
+    <div id="status">Not loaded</div>
+</div>
+<div id="error" class="error"></div>
+<div id="list"></div>
+
+<script>
+    // API discovery: probe 8080..8090 and pick the first responding port
+    let API_BASE = null; // will become e.g. 'http://localhost:8080/api/equipment'
+    let API_RELOAD = null;
+
+    async function probePort(port, timeout = 1200) {
+        const url = `http://localhost:${port}/api/equipment`;
+        try {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            const resp = await fetch(url, { method: 'GET', signal: controller.signal });
+            clearTimeout(id);
+            return resp && resp.ok;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function findApiBase() {
+        statusEl.textContent = 'Searching for API...';
+        for (let port = 8080; port <= 8090; port++) {
+            const ok = await probePort(port);
+            if (ok) {
+                API_BASE = `http://localhost:${port}/api/equipment`;
+                API_RELOAD = `http://localhost:${port}/api/reload`;
+                statusEl.textContent = `Connected to API on port ${port}`;
+                return true;
+            }
+        }
+        statusEl.textContent = 'API not found on ports 8080-8090';
+        errorEl.textContent = 'Unable to reach backend API. Start the Java web server (WebServerLauncher).';
+        return false;
+    }
+
+    async function fetchList(type=null) {
+        errorEl.textContent = '';
+        if (!API_BASE) {
+            const found = await findApiBase();
+            if (!found) return;
+        }
+        let url = API_BASE;
+        if (type) url += '?type=' + encodeURIComponent(type);
+        statusEl.textContent = 'Loading...';
+        try {
+            const resp = await fetch(url, { cache: 'no-store' });
+            if (!resp.ok) throw new Error(resp.status + ' ' + resp.statusText);
+            const data = await resp.json();
+            renderList(data);
+            statusEl.textContent = `Loaded ${data.length} item(s)`;
+        } catch (err) {
+            statusEl.textContent = 'Error';
+            errorEl.textContent = 'Failed to load data: ' + err.message;
+            listEl.innerHTML = '';
+        }
+    }
+
+    async function reloadFromDb() {
+        errorEl.textContent = '';
+        statusEl.textContent = 'Reloading...';
+        try {
+            if (!API_RELOAD) {
+                const found = await findApiBase();
+                if (!found) return;
+            }
+            const resp = await fetch(API_RELOAD, { method: 'POST' });
+            if (!resp.ok) throw new Error(resp.status + ' ' + resp.statusText);
+            const data = await resp.json();
+            renderList(data);
+            statusEl.textContent = `Reloaded ${data.length} item(s)`;
+        } catch (err) {
+            statusEl.textContent = 'Error';
+            errorEl.textContent = 'Failed to reload: ' + err.message;
+        }
+    }
+
+    function renderList(items) {
+        listEl.innerHTML = '';
+        if (!items || items.length === 0) {
+            listEl.innerHTML = '<div class="muted">No equipment found.</div>';
+            return;
+        }
+        for (const it of items) {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const header = document.createElement('div');
+            header.className = 'row';
+            header.innerHTML = `<div class="key">${escapeHtml(it.class)}</div><div class="muted">${escapeHtml(it.denumire || '')}</div>`;
+
+            const body = document.createElement('div');
+            body.className = 'row';
+
+            addField(body, 'Inv #', it.nr_inv);
+            addField(body, 'Price', it.pret);
+            addField(body, 'Zone', it.zona_magazin);
+            addField(body, 'State', it.stare);
+
+            // type-specific
+            if (it.class === 'Imprimante') {
+                addField(body, 'PPM', it.ppm);
+                addField(body, 'DPI', it.dpi);
+                addField(body, 'Cartridge', it.p_car);
+                addField(body, 'Mode', it.mod_tiparire);
+            } else if (it.class === 'Copiatoarele') {
+                addField(body, 'Toner', it.p_ton);
+                addField(body, 'Format', it.format_copiere);
+            } else if (it.class === 'SistemCalculatoare') {
+                addField(body, 'Monitor', it.tip_mon);
+                addField(body, 'CPU GHz', it.vit_proc);
+                addField(body, 'HDD GB', it.c_hdd);
+                addField(body, 'OS', it.sistem_operare);
+            }
+
+            card.appendChild(header);
+            card.appendChild(body);
+            listEl.appendChild(card);
+        }
+    }
+
+    function addField(container, label, value) {
+        const el = document.createElement('div');
+        el.className = 'muted';
+        el.innerHTML = `<span class="key">${escapeHtml(label)}:</span> ${escapeHtml(value === undefined || value === null ? '' : String(value))}`;
+        container.appendChild(el);
+    }
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('btnAll').addEventListener('click', () => fetchList());
+    document.getElementById('btnPrinters').addEventListener('click', () => fetchList(typeMap.Printers));
+    document.getElementById('btnCopiers').addEventListener('click', () => fetchList(typeMap.Copiers));
+    document.getElementById('btnSystems').addEventListener('click', () => fetchList(typeMap.Systems));
+    document.getElementById('btnReload').addEventListener('click', () => reloadFromDb());
+
+    // initial load: discover API then fetch
+    window.addEventListener('DOMContentLoaded', async () => {
+        const found = await findApiBase();
+        if (found) fetchList();
+    });
+</script>
+</body>
+</html>

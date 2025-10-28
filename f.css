@@ -1,0 +1,35 @@
+/* f.css */
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-background-color: linear-gradient(#f6f8fb, #e9eef6);
+}
+
+.controls {
+    -fx-padding: 8;
+}
+
+.button {
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-padding: 6 12 6 12;
+    -fx-background-color: #1976d2;
+    -fx-text-fill: white;
+    -fx-font-weight: 600;
+}
+
+.button:hover {
+    -fx-background-color: #155fa0;
+}
+
+.list-view {
+    -fx-background-color: white;
+    -fx-border-color: #d0d7e2;
+    -fx-border-width: 1;
+    -fx-background-insets: 0;
+}
+
+.list-cell {
+    -fx-padding: 10 8;
+    -fx-border-color: transparent transparent #eef2f7 transparent;
+    -fx-border-width: 0 0 1 0;
+}

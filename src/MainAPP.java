@@ -5,7 +5,7 @@ import java.util.Scanner;
 
 public class MainAPP
 {
-    static List<Electronice> echipamente = new ArrayList<>();
+    static final List<Electronice> echipamente = new ArrayList<>();
 
     public static void main(String[] args) {
         TestDB.main(args); // verifică conexiunea
@@ -81,7 +81,7 @@ public class MainAPP
 
                 case "1" -> {
                     if (echipamente.isEmpty())
-                        System.out.println("⚠️ Nicio înregistrare încărcată din baza de date!");
+                        System.out.println("⚠ Nicio înregistrare încărcată din baza de date!");
                     else
                         echipamente.forEach(Electronice::AfisareEchipamente);
                 }
@@ -332,4 +332,3 @@ public class MainAPP
         }
     }
 }
-
